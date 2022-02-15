@@ -1,9 +1,76 @@
 import { EllipsoidSurfaceAppearance, GeometryInstance, Material, Primitive, Rectangle, RectangleGeometry, Viewer, Event, SingleTileImageryProvider, ImageryLayer, ImageMaterialProperty, Entity } from "cesium";
-import * as h337 from 'heatmap.js'
+import * as h337 from './heatmap.js'//只能使用2.0.0版本，高版本热度图有出不来的情况，并且2.0.0 npm包有问题，只能通过修改使用这个js
+export interface BaseHeatmapConfiguration {
+    /**
+     * A background color string in form of hexcode, color name, or rgb(a)
+     */
+    backgroundColor?: string | undefined;
+
+    /**
+     * The blur factor that will be applied to all datapoints. The higher the
+     * blur factor is, the smoother the gradients will be
+     * Default value: 0.85
+     */
+    blur?: number | undefined;
+
+    /**
+     * An object that represents the gradient.
+     * Syntax: {[key: number in range [0,1]]: color}
+     */
+    gradient?: { [key: string]: string } | undefined;
+
+    /**
+     * The maximal opacity the highest value in the heatmap will have. (will be
+     * overridden if opacity set)
+     * Default value: 0.6
+     */
+    maxOpacity?: number | undefined;
+
+    /**
+     * The minimum opacity the lowest value in the heatmap will have (will be
+     * overridden if opacity set)
+     */
+    minOpacity?: number | undefined;
+
+    /**
+     * A global opacity for the whole heatmap. This overrides maxOpacity and
+     * minOpacity if set
+     * Default value: 0.6
+     */
+    opacity?: number | undefined;
+
+    /**
+     * The radius each datapoint will have (if not specified on the datapoint
+     * itself)
+     */
+    radius?: number | undefined;
+
+    /**
+     * The property name of the value/weight in a datapoint
+     * Default value: 'value'
+     */
+    valueField?: undefined;
+
+    /**
+     * Pass a callback to receive extrema change updates. Useful for DOM
+     * legends.
+     */
+    onExtremaChange?: (() => void) | undefined;
+
+    /**
+     * Indicate whether the heatmap should use a global extrema or a local
+     * extrema (the maximum and minimum of the currently displayed viewport)
+     */
+    useLocalExtrema?: boolean | undefined;
+}
 export interface HeatmapPoint {
     x: number
     y: number
     value?: number
+}
+
+export interface HeatmapConfiguration extends BaseHeatmapConfiguration {
+
 }
 export interface HeatmapDataOption {
     max?: number//数据最大值
@@ -17,13 +84,13 @@ export interface CesiumHeatmapOption {
     renderType?: RenderType//渲染类型
     points: HeatmapPoint[]
     bounds?: number[]
-    heatmapOptions?: h337.BaseHeatmapConfiguration
+    heatmapOptions?: BaseHeatmapConfiguration
     heatmapDataOptions?: HeatmapDataOption
     zoomToLayer?: boolean
+    onRadiusChange?: (radius: number) => void
 }
 
 export type Bounds = [number, number, number, number]
-const minRadius = 10
 
 /**
  * 热度图
@@ -32,13 +99,14 @@ export class CesiumHeatmap {
     private viewer: Viewer
     private element?: HTMLElement
     private initOptions: CesiumHeatmapOption
-    private heatmapOptions?: h337.BaseHeatmapConfiguration
+    private heatmapOptions?: HeatmapConfiguration
     private heatmapDataOptions?: HeatmapDataOption
     private provider?: any
     private heatmap?: any
     private cameraMoveEnd?: Event.RemoveCallback
     private bounds: Bounds = [0, 0, 0, 0]
     private lastCameraHeight = 0
+    private initRadius = 10
     constructor(viewer: Viewer, options: CesiumHeatmapOption) {
         this.viewer = viewer
         this.initOptions = { ...options }
@@ -66,16 +134,16 @@ export class CesiumHeatmap {
             //数据的最大值和最小值
             let _min = Math.min(...values), _max = Math.max(...values)
             if (this.initOptions?.heatmapDataOptions) {
-                const { min, max } = this.initOptions?.heatmapDataOptions
+                const { min, max } = this.initOptions.heatmapDataOptions
                 if (typeof (min) === "number") {
                     _min = min
                 }
                 if (typeof (max) === "number") {
                     _max = max
                 }
+
             }
             this.heatmapDataOptions = { min: _min, max: _max }
-
 
             const data = {
                 max: _max,
@@ -85,7 +153,7 @@ export class CesiumHeatmap {
 
             const defaultOptions = {
                 maxOpacity: .9,
-                radius: minRadius,
+                // radius: minRadius,
                 // minimum opacity. any value > 0 will produce 
                 // no transparent gradient transition
                 minOpacity: .1,
@@ -99,6 +167,11 @@ export class CesiumHeatmap {
                 },
             }
             const _options = this.initOptions.heatmapOptions ? { ...defaultOptions, ...this.initOptions.heatmapOptions } : defaultOptions
+
+            //初始化半径
+            if (this.heatmapOptions?.radius) {
+                this.initRadius = this.heatmapOptions.radius
+            }
 
             this.heatmapOptions = { ..._options }
             const options = {
@@ -148,10 +221,31 @@ export class CesiumHeatmap {
      * 更新热度图配置
      * @param options 
      */
-    updateHeatmap(options: h337.HeatmapConfiguration) {
+    updateHeatmap(options: HeatmapConfiguration) {
         const { heatmapOptions } = this
         this.heatmap.configure({ ...heatmapOptions, ...options })
         this.updateLayer()
+    }
+
+    /**
+     * 更新半径
+     * @param radius 
+     */
+    updateRadius(radius: number) {
+        const { heatmapOptions } = this
+        const currentData = this.heatmap.getData();
+        if (currentData?.data) {
+            for (let i in currentData.data) {
+                const data = currentData.data[i]
+                data.radius = radius
+            }
+        }
+        this.heatmap.setData(currentData)
+        this.heatmapOptions = { ...heatmapOptions, ...{ radius } }
+        this.updateLayer()
+        if (this.initOptions?.onRadiusChange) {
+            this.initOptions.onRadiusChange(radius)
+        }
     }
 
     /**
@@ -261,24 +355,14 @@ export class CesiumHeatmap {
         const max = 10000000
         this.cameraMoveEnd = this.viewer.camera.moveEnd.addEventListener(() => {
             if (this.heatmapOptions && this.heatmap && this.heatmapDataOptions) {
-                const { heatmapOptions } = this
                 const h = this.viewer.camera.getMagnitude()
                 const distance = this?.initOptions?.cameraHeightDistance ? this.initOptions.cameraHeightDistance : 1000
                 if (Math.abs(h - this.lastCameraHeight) > distance) {
                     this.lastCameraHeight = h
                     if (typeof (min) === "number" && typeof (max) === "number") {
-                        const radius = parseInt((minRadius + (maxRadius - minRadius) * (h - min) / (max - min)).toFixed(0))
+                        const radius = parseInt((this.initRadius + (maxRadius - this.initRadius) * (h - min) / (max - min)).toFixed(0))
                         if (radius) {
-                            const currentData = this.heatmap.getData();
-                            if (currentData?.data) {
-                                for (let i in currentData.data) {
-                                    const data = currentData.data[i]
-                                    data.radius = radius
-                                }
-                            }
-                            this.heatmap.setData(currentData)
-                            this.heatmapOptions = { ...heatmapOptions, ...{ radius } }
-                            this.updateLayer()
+                            this.updateRadius(radius)
                         }
                     }
                 }

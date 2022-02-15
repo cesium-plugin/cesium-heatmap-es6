@@ -49,8 +49,8 @@
                         const lon = feature.geometry.coordinates[0]
                         const lat = feature.geometry.coordinates[1]
                         points.push({
-                            x: lon - 0.05,
-                            y: lat - 0.04,
+                            x: lon,
+                            y: lat,
                             value: 100 * Math.random()
                         })
                     })

@@ -1,13 +1,16 @@
 import { Cartesian3, Cartographic, Cesium3DTileset, Matrix4, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer, Math as CesiumMath, ArcGisMapServerImageryProvider, ArcGISTiledElevationTerrainProvider } from 'cesium';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { CesiumHeatmap, HeatmapPoint } from '../source';
 import { Col, Row, Slider } from 'antd';
 
 let cesiumHeatmap: CesiumHeatmap
-const defaultDataValue: [number, number] = [10, 500]
+const defaultDataValue: [number, number] = [10, 200]
 const defaultOpacityValue: [number, number] = [0, 1]
-
+const defaultRadius = 20
 const PHeatMap = (props: any) => {
+    const [radius, setRadius] = useState(defaultRadius)
+
+    
     useEffect(() => {
         const viewer: Viewer = new Viewer('map', {
             imageryProvider: new ArcGisMapServerImageryProvider({ url: "https://elevation3d.arcgis.com/arcgis/rest/services/World_Imagery/MapServer" }),
@@ -20,7 +23,6 @@ const PHeatMap = (props: any) => {
             timeline: false,
             baseLayerPicker: false
         })
-
 
         const _3DTileset = new Cesium3DTileset({
             url: 'http://resource.dvgis.cn/data/3dtiles/ljz/tileset.json'
@@ -48,20 +50,6 @@ const PHeatMap = (props: any) => {
             }, ScreenSpaceEventType.LEFT_CLICK)
         })
 
-        // const points: HeatMapPoint[] = [
-        //     {
-        //         longitude: 121.5014518384833,
-        //         latitude: 31.23564006124199,
-        //         value: 42.99642652631694,
-        //     },
-        //     {
-        //         longitude: 121.48100097584987,
-        //         latitude: 31.232386736176224,
-        //         height: 25.683469294844425,
-        //         value: 100
-        //     },
-        //     { longitude: 121.5163445091478, latitude: 31.263604790448436, value: 52.626351105611 }
-        // ]
         const points: HeatmapPoint[] = []
         fetch("/datas/geojson/busstop2016.geojson", {
             method: 'GET',
@@ -75,8 +63,8 @@ const PHeatMap = (props: any) => {
                         const lon = feature.geometry.coordinates[0]
                         const lat = feature.geometry.coordinates[1]
                         points.push({
-                            x: lon - 0.05,
-                            y: lat - 0.04,
+                            x: lon,
+                            y: lat,
                             value: 100 * Math.random()
                         })
                     })
@@ -88,6 +76,9 @@ const PHeatMap = (props: any) => {
                         heatmapOptions: {
                             maxOpacity: defaultOpacityValue[1],
                             minOpacity: defaultOpacityValue[0]
+                        },
+                        onRadiusChange: (radius) => {
+                            setRadius(radius)
                         }
                     }
                 )
@@ -123,6 +114,10 @@ const PHeatMap = (props: any) => {
         } as any)
     }
 
+    function onUpdateRadius(value: number) {
+        cesiumHeatmap.updateRadius(value)
+    }
+
     return <div style={{ width: "100%", height: "100%", position: "relative" }} >
         <div style={{ width: "100%", height: "100%" }} id="map">
 
@@ -130,6 +125,8 @@ const PHeatMap = (props: any) => {
         <Row style={{ position: "absolute", top: 0, left: 0, zIndex: 5000, backgroundColor: "#fff" }}>
             <Col style={{ padding: 10 }}>更新数据的值域:<Slider style={{ width: 200 }} min={0} max={1000} range defaultValue={defaultDataValue} onChange={onUpdate} /></Col>
             <Col style={{ padding: 10 }}>更新透明度:<Slider style={{ width: 200 }} step={0.1} min={0} max={1} range defaultValue={defaultOpacityValue} onChange={onUpdateOpacity} /></Col>
+            <Col style={{ padding: 10 }}>更新半径:<Slider style={{ width: 200 }} step={0.1} min={0} max={100} value={radius} onChange={onUpdateRadius} /></Col>
+
         </Row>
     </div>
 }
