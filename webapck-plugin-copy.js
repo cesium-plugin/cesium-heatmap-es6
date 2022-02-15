@@ -45,10 +45,18 @@ class CopyDirWebpackPlugin {
                             //把打包生成js删除
                             paths.forEach((src) => {
                                 if (src.indexOf(".js") > -1) {
-                                    fs.remove(src, err => {
-                                        if (err) return console.error(err)
-                                        console.log(src, 'remove success!')
-                                    })
+                                    //源码为js的跳过
+                                    let find = false
+                                    if (opt.skipjs) {
+                                        find = opt.skipjs.find((str) => {
+                                            return src.indexOf(str) > -1
+                                        })
+                                    }
+                                    if (!find)
+                                        fs.remove(src, err => {
+                                            if (err) return console.error(err)
+                                            console.log(src, 'remove success!')
+                                        })
                                 }
                             })
                             paths = []

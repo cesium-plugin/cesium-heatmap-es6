@@ -12,6 +12,7 @@ const plugins = [
             from: path.resolve(__dirname, `./src/source`),
             to: path.resolve('./dist'),
             skipts: true,//跳过ts
+            skipjs: ["heatmap.js"]
         },
     ]),
 ]
