@@ -1,7 +1,7 @@
 import { Cartesian3, Cartographic, Cesium3DTileset, Matrix4, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer, Math as CesiumMath, ArcGisMapServerImageryProvider, ArcGISTiledElevationTerrainProvider } from 'cesium';
 import { useEffect, useState } from 'react';
 import { CesiumHeatmap, HeatmapPoint } from '../source';
-import { Col, Row, Slider } from 'antd';
+import { Button, Col, Row, Slider } from 'antd';
 
 let cesiumHeatmap: CesiumHeatmap
 const defaultDataValue: [number, number] = [10, 200]
@@ -10,7 +10,7 @@ const defaultRadius = 20
 const PHeatMap = (props: any) => {
     const [radius, setRadius] = useState(defaultRadius)
 
-    
+
     useEffect(() => {
         const viewer: Viewer = new Viewer('map', {
             imageryProvider: new ArcGisMapServerImageryProvider({ url: "https://elevation3d.arcgis.com/arcgis/rest/services/World_Imagery/MapServer" }),
@@ -118,6 +118,10 @@ const PHeatMap = (props: any) => {
         cesiumHeatmap.updateRadius(value)
     }
 
+    function remove() {
+        cesiumHeatmap?.remove()
+    }
+
     return <div style={{ width: "100%", height: "100%", position: "relative" }} >
         <div style={{ width: "100%", height: "100%" }} id="map">
 
@@ -126,7 +130,8 @@ const PHeatMap = (props: any) => {
             <Col style={{ padding: 10 }}>更新数据的值域:<Slider style={{ width: 200 }} min={0} max={1000} range defaultValue={defaultDataValue} onChange={onUpdate} /></Col>
             <Col style={{ padding: 10 }}>更新透明度:<Slider style={{ width: 200 }} step={0.1} min={0} max={1} range defaultValue={defaultOpacityValue} onChange={onUpdateOpacity} /></Col>
             <Col style={{ padding: 10 }}>更新半径:<Slider style={{ width: 200 }} step={0.1} min={0} max={100} value={radius} onChange={onUpdateRadius} /></Col>
-
+            <Col style={{ padding: 10 }}><Button type="primary" onClick={remove}>移除</Button></Col>
+            <Col style={{ padding: 10 }}><Button type="primary" onClick={() => { window.location.reload() }}>重载</Button></Col>
         </Row>
     </div>
 }

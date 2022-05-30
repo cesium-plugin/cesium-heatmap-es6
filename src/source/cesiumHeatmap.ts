@@ -176,9 +176,7 @@ export class CesiumHeatmap {
             this.heatmapOptions = { ..._options }
             const options = {
                 ..._options,
-                ... {
-                    container
-                }
+                container
             }
             this.heatmap = h337.create(options)
             this.heatmap.setData(data as any)
@@ -264,8 +262,10 @@ export class CesiumHeatmap {
             } else if (this.provider instanceof Entity) {
                 this.viewer.entities.remove(this.provider)
             }
-            if (this.cameraMoveEnd)
+            if (this.cameraMoveEnd) {
                 this.viewer.camera.moveEnd.removeEventListener(this.cameraMoveEnd)
+                this.cameraMoveEnd = undefined
+            }
         }
     }
 
@@ -353,7 +353,7 @@ export class CesiumHeatmap {
         const maxRadius = 100
         const min = 6375000
         const max = 10000000
-        this.cameraMoveEnd = this.viewer.camera.moveEnd.addEventListener(() => {
+        this.cameraMoveEnd = () => {
             if (this.heatmapOptions && this.heatmap && this.heatmapDataOptions) {
                 const h = this.viewer.camera.getMagnitude()
                 const distance = this?.initOptions?.cameraHeightDistance ? this.initOptions.cameraHeightDistance : 1000
@@ -367,7 +367,8 @@ export class CesiumHeatmap {
                     }
                 }
             }
-        })
+        }
+        this.viewer.camera.moveEnd.addEventListener(this.cameraMoveEnd)
     }
 
 
