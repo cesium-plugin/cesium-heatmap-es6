@@ -1,5 +1,5 @@
 import { EllipsoidSurfaceAppearance, GeometryInstance, Material, Primitive, Rectangle, RectangleGeometry, Viewer, Event, SingleTileImageryProvider, ImageryLayer, ImageMaterialProperty, Entity } from "cesium";
-import * as h337 from './heatmap.js'//只能使用2.0.0版本，高版本热度图有出不来的情况，并且2.0.0 npm包有问题，只能通过修改使用这个js
+import h337 from './heatmap.js'//只能使用2.0.0版本，高版本热度图有出不来的情况，并且2.0.0 npm包有问题，只能通过修改使用这个js
 export interface BaseHeatmapConfiguration {
     /**
      * A background color string in form of hexcode, color name, or rgb(a)
