@@ -2,49 +2,38 @@
  * heatmap.js v2.0.0 | JavaScript Heatmap Library
  *
  * Copyright 2008-2014 Patrick Wied <heatmapjs@patrick-wied.at> - All rights reserved.
- * Dual licensed under MIT and Beerware license 
+ * Dual licensed under MIT and Beerware license
  *
  * :: 2015-07-19 15:42
  */
-;(function (name, context, factory) {
-
-  // Supports UMD. AMD, CommonJS/Node.js and browser context
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = factory();
-  } 
-  // else if (typeof define === "function" && define.amd) {
-  //   define(factory);
-  // } 
-  else {
-    context[name] = factory();
-  }
-
-})("h337", this, function () {
-
 // Heatmap Config stores default values and will be merged with instance config
 var HeatmapConfig = {
   defaultRadius: 40,
-  defaultRenderer: 'canvas2d',
-  defaultGradient: { 0.25: "rgb(0,0,255)", 0.55: "rgb(0,255,0)", 0.85: "yellow", 1.0: "rgb(255,0,0)"},
+  defaultRenderer: "canvas2d",
+  defaultGradient: {
+    0.25: "rgb(0,0,255)",
+    0.55: "rgb(0,255,0)",
+    0.85: "yellow",
+    1.0: "rgb(255,0,0)",
+  },
   defaultMaxOpacity: 1,
   defaultMinOpacity: 0,
-  defaultBlur: .85,
-  defaultXField: 'x',
-  defaultYField: 'y',
-  defaultValueField: 'value', 
-  plugins: {}
+  defaultBlur: 0.85,
+  defaultXField: "x",
+  defaultYField: "y",
+  defaultValueField: "value",
+  plugins: {},
 };
 var Store = (function StoreClosure() {
-
   var Store = function Store(config) {
     this._coordinator = {};
     this._data = [];
     this._radi = [];
     this._min = 0;
     this._max = 1;
-    this._xField = config['xField'] || config.defaultXField;
-    this._yField = config['yField'] || config.defaultYField;
-    this._valueField = config['valueField'] || config.defaultValueField;
+    this._xField = config["xField"] || config.defaultXField;
+    this._yField = config["yField"] || config.defaultYField;
+    this._valueField = config["valueField"] || config.defaultValueField;
 
     if (config["radius"]) {
       this._cfgRadius = config["radius"];
@@ -55,76 +44,74 @@ var Store = (function StoreClosure() {
 
   Store.prototype = {
     // when forceRender = false -> called from setData, omits renderall event
-    _organiseData: function(dataPoint, forceRender) {
-        var x = dataPoint[this._xField];
-        var y = dataPoint[this._yField];
-        var radi = this._radi;
-        var store = this._data;
-        var max = this._max;
-        var min = this._min;
-        var value = dataPoint[this._valueField] || 1;
-        var radius = dataPoint.radius || this._cfgRadius || defaultRadius;
+    _organiseData: function (dataPoint, forceRender) {
+      var x = dataPoint[this._xField];
+      var y = dataPoint[this._yField];
+      var radi = this._radi;
+      var store = this._data;
+      var max = this._max;
+      var min = this._min;
+      var value = dataPoint[this._valueField] || 1;
+      var radius = dataPoint.radius || this._cfgRadius || defaultRadius;
 
-        if (!store[x]) {
-          store[x] = [];
-          radi[x] = [];
-        }
+      if (!store[x]) {
+        store[x] = [];
+        radi[x] = [];
+      }
 
-        if (!store[x][y]) {
-          store[x][y] = value;
-          radi[x][y] = radius;
+      if (!store[x][y]) {
+        store[x][y] = value;
+        radi[x][y] = radius;
+      } else {
+        store[x][y] += value;
+      }
+
+      if (store[x][y] > max) {
+        if (!forceRender) {
+          this._max = store[x][y];
         } else {
-          store[x][y] += value;
+          this.setDataMax(store[x][y]);
         }
-
-        if (store[x][y] > max) {
-          if (!forceRender) {
-            this._max = store[x][y];
-          } else {
-            this.setDataMax(store[x][y]);
-          }
-          return false;
-        } else{
-          return { 
-            x: x, 
-            y: y,
-            value: value, 
-            radius: radius,
-            min: min,
-            max: max 
-          };
-        }
+        return false;
+      } else {
+        return {
+          x: x,
+          y: y,
+          value: value,
+          radius: radius,
+          min: min,
+          max: max,
+        };
+      }
     },
-    _unOrganizeData: function() {
+    _unOrganizeData: function () {
       var unorganizedData = [];
       var data = this._data;
       var radi = this._radi;
 
       for (var x in data) {
         for (var y in data[x]) {
-
           unorganizedData.push({
             x: x,
             y: y,
             radius: radi[x][y],
-            value: data[x][y]
+            value: data[x][y],
           });
-
         }
       }
       return {
         min: this._min,
         max: this._max,
-        data: unorganizedData
+        data: unorganizedData,
       };
     },
-    _onExtremaChange: function() {
-      this._coordinator.emit('extremachange', {
+    _onExtremaChange: function () {
+      this._coordinator.emit("extremachange", {
         min: this._min,
-        max: this._max
+        max: this._max,
       });
     },
-    addData: function() {
+    addData: function () {
       if (arguments[0].length > 0) {
         var dataArr = arguments[0];
         var dataLen = dataArr.length;
@@ -132,66 +119,65 @@ var Store = (function StoreClosure() {
           this.addData.call(this, dataArr[dataLen]);
         }
       } else {
-        // add to store  
+        // add to store
         var organisedEntry = this._organiseData(arguments[0], true);
         if (organisedEntry) {
-          this._coordinator.emit('renderpartial', {
+          this._coordinator.emit("renderpartial", {
             min: this._min,
             max: this._max,
-            data: [organisedEntry]
+            data: [organisedEntry],
           });
         }
       }
       return this;
     },
-    setData: function(data) {
+    setData: function (data) {
       var dataPoints = data.data;
       var pointsLen = dataPoints.length;
-
 
       // reset data arrays
       this._data = [];
       this._radi = [];
 
-      for(var i = 0; i < pointsLen; i++) {
+      for (var i = 0; i < pointsLen; i++) {
         this._organiseData(dataPoints[i], false);
       }
       this._max = data.max;
       this._min = data.min || 0;
-      
+
       this._onExtremaChange();
-      this._coordinator.emit('renderall', this._getInternalData());
+      this._coordinator.emit("renderall", this._getInternalData());
       return this;
     },
-    removeData: function() {
+    removeData: function () {
       // TODO: implement
     },
-    setDataMax: function(max) {
+    setDataMax: function (max) {
       this._max = max;
       this._onExtremaChange();
-      this._coordinator.emit('renderall', this._getInternalData());
+      this._coordinator.emit("renderall", this._getInternalData());
       return this;
     },
-    setDataMin: function(min) {
+    setDataMin: function (min) {
       this._min = min;
       this._onExtremaChange();
-      this._coordinator.emit('renderall', this._getInternalData());
+      this._coordinator.emit("renderall", this._getInternalData());
       return this;
     },
-    setCoordinator: function(coordinator) {
+    setCoordinator: function (coordinator) {
       this._coordinator = coordinator;
     },
-    _getInternalData: function() {
-      return { 
+    _getInternalData: function () {
+      return {
         max: this._max,
-        min: this._min, 
+        min: this._min,
         data: this._data,
-        radi: this._radi 
+        radi: this._radi,
       };
     },
-    getData: function() {
+    getData: function () {
       return this._unOrganizeData();
-    }/*,
+    } /*,
 
       TODO: rethink.
 
@@ -229,19 +215,17 @@ var Store = (function StoreClosure() {
         }
       }
       return false;
-    }*/
+    }*/,
   };
-
 
   return Store;
 })();
 
 var Canvas2dRenderer = (function Canvas2dRendererClosure() {
-  
-  var _getColorPalette = function(config) {
+  var _getColorPalette = function (config) {
     var gradientConfig = config.gradient || config.defaultGradient;
-    var paletteCanvas = document.createElement('canvas');
-    var paletteCtx = paletteCanvas.getContext('2d');
+    var paletteCanvas = document.createElement("canvas");
+    var paletteCtx = paletteCanvas.getContext("2d");
 
     paletteCanvas.width = 256;
     paletteCanvas.height = 1;
@@ -257,46 +241,51 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
     return paletteCtx.getImageData(0, 0, 256, 1).data;
   };
 
-  var _getPointTemplate = function(radius, blurFactor) {
-    var tplCanvas = document.createElement('canvas');
-    var tplCtx = tplCanvas.getContext('2d');
+  var _getPointTemplate = function (radius, blurFactor) {
+    var tplCanvas = document.createElement("canvas");
+    var tplCtx = tplCanvas.getContext("2d");
     var x = radius;
     var y = radius;
-    tplCanvas.width = tplCanvas.height = radius*2;
+    tplCanvas.width = tplCanvas.height = radius * 2;
 
     if (blurFactor == 1) {
       tplCtx.beginPath();
       tplCtx.arc(x, y, radius, 0, 2 * Math.PI, false);
-      tplCtx.fillStyle = 'rgba(0,0,0,1)';
+      tplCtx.fillStyle = "rgba(0,0,0,1)";
       tplCtx.fill();
     } else {
-      var gradient = tplCtx.createRadialGradient(x, y, radius*blurFactor, x, y, radius);
-      gradient.addColorStop(0, 'rgba(0,0,0,1)');
-      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      var gradient = tplCtx.createRadialGradient(
+        x,
+        y,
+        radius * blurFactor,
+        x,
+        y,
+        radius
+      );
+      gradient.addColorStop(0, "rgba(0,0,0,1)");
+      gradient.addColorStop(1, "rgba(0,0,0,0)");
       tplCtx.fillStyle = gradient;
-      tplCtx.fillRect(0, 0, 2*radius, 2*radius);
+      tplCtx.fillRect(0, 0, 2 * radius, 2 * radius);
     }
-    
-    
 
     return tplCanvas;
   };
 
-  var _prepareData = function(data) {
+  var _prepareData = function (data) {
     var renderData = [];
     var min = data.min;
     var max = data.max;
     var radi = data.radi;
     var data = data.data;
-    
+
     var xValues = Object.keys(data);
     var xValuesLen = xValues.length;
 
-    while(xValuesLen--) {
+    while (xValuesLen--) {
       var xValue = xValues[xValuesLen];
       var yValues = Object.keys(data[xValue]);
       var yValuesLen = yValues.length;
-      while(yValuesLen--) {
+      while (yValuesLen--) {
         var yValue = yValues[yValuesLen];
         var value = data[xValue][yValue];
         var radius = radi[xValue][yValue];
@@ -304,7 +293,7 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
           x: xValue,
           y: yValue,
           value: value,
-          radius: radius
+          radius: radius,
         });
       }
     }
@@ -312,73 +301,80 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
     return {
       min: min,
       max: max,
-      data: renderData
+      data: renderData,
     };
   };
 
-
   function Canvas2dRenderer(config) {
     var container = config.container;
-    var shadowCanvas = this.shadowCanvas = document.createElement('canvas');
-    var canvas = this.canvas = config.canvas || document.createElement('canvas');
-    var renderBoundaries = this._renderBoundaries = [10000, 10000, 0, 0];
+    var shadowCanvas = (this.shadowCanvas = document.createElement("canvas"));
+    var canvas = (this.canvas =
+      config.canvas || document.createElement("canvas"));
+    var renderBoundaries = (this._renderBoundaries = [10000, 10000, 0, 0]);
 
     var computed = getComputedStyle(config.container) || {};
 
-    canvas.className = 'heatmap-canvas';
+    canvas.className = "heatmap-canvas";
 
-    this._width = canvas.width = shadowCanvas.width = +(computed.width.replace(/px/,''));
-    this._height = canvas.height = shadowCanvas.height = +(computed.height.replace(/px/,''));
+    this._width =
+      canvas.width =
+      shadowCanvas.width =
+        +computed.width.replace(/px/, "");
+    this._height =
+      canvas.height =
+      shadowCanvas.height =
+        +computed.height.replace(/px/, "");
 
-    this.shadowCtx = shadowCanvas.getContext('2d');
-    this.ctx = canvas.getContext('2d');
+    this.shadowCtx = shadowCanvas.getContext("2d");
+    this.ctx = canvas.getContext("2d");
 
     // @TODO:
     // conditional wrapper
 
-    canvas.style.cssText = shadowCanvas.style.cssText = 'position:absolute;left:0;top:0;';
+    canvas.style.cssText = shadowCanvas.style.cssText =
+      "position:absolute;left:0;top:0;";
 
-    container.style.position = 'relative';
+    container.style.position = "relative";
     container.appendChild(canvas);
 
     this._palette = _getColorPalette(config);
     this._templates = {};
 
     this._setStyles(config);
-  };
+  }
 
   Canvas2dRenderer.prototype = {
-    renderPartial: function(data) {
+    renderPartial: function (data) {
       this._drawAlpha(data);
       this._colorize();
     },
-    renderAll: function(data) {
+    renderAll: function (data) {
       // reset render boundaries
       this._clear();
       this._drawAlpha(_prepareData(data));
       this._colorize();
     },
-    _updateGradient: function(config) {
+    _updateGradient: function (config) {
       this._palette = _getColorPalette(config);
     },
-    updateConfig: function(config) {
-      if (config['gradient']) {
+    updateConfig: function (config) {
+      if (config["gradient"]) {
         this._updateGradient(config);
       }
       this._setStyles(config);
     },
-    setDimensions: function(width, height) {
+    setDimensions: function (width, height) {
       this._width = width;
       this._height = height;
       this.canvas.width = this.shadowCanvas.width = width;
       this.canvas.height = this.shadowCanvas.height = height;
     },
-    _clear: function() {
+    _clear: function () {
       this.shadowCtx.clearRect(0, 0, this._width, this._height);
       this.ctx.clearRect(0, 0, this._width, this._height);
     },
-    _setStyles: function(config) {
-      this._blur = (config.blur == 0)?0:(config.blur || config.defaultBlur);
+    _setStyles: function (config) {
+      this._blur = config.blur == 0 ? 0 : config.blur || config.defaultBlur;
 
       if (config.backgroundColor) {
         this.canvas.style.backgroundColor = config.backgroundColor;
@@ -389,16 +385,15 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
       this._minOpacity = (config.minOpacity || config.defaultMinOpacity) * 255;
       this._useGradientOpacity = !!config.useGradientOpacity;
     },
-    _drawAlpha: function(data) {
-      var min = this._min = data.min;
-      var max = this._max = data.max;
+    _drawAlpha: function (data) {
+      var min = (this._min = data.min);
+      var max = (this._max = data.max);
       var data = data.data || [];
       var dataLen = data.length;
       // on a point basis?
       var blur = 1 - this._blur;
 
-      while(dataLen--) {
-
+      while (dataLen--) {
         var point = data[dataLen];
 
         var x = point.x;
@@ -411,9 +406,6 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
         var rectY = y - radius;
         var shadowCtx = this.shadowCtx;
 
-
-
-
         var tpl;
         if (!this._templates[radius]) {
           this._templates[radius] = tpl = _getPointTemplate(radius, blur);
@@ -422,27 +414,26 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
         }
         // value from minimum / value range
         // => [0, 1]
-        shadowCtx.globalAlpha = (value-min)/(max-min);
+        shadowCtx.globalAlpha = (value - min) / (max - min);
 
         shadowCtx.drawImage(tpl, rectX, rectY);
 
         // update renderBoundaries
         if (rectX < this._renderBoundaries[0]) {
-            this._renderBoundaries[0] = rectX;
-          } 
-          if (rectY < this._renderBoundaries[1]) {
-            this._renderBoundaries[1] = rectY;
-          }
-          if (rectX + 2*radius > this._renderBoundaries[2]) {
-            this._renderBoundaries[2] = rectX + 2*radius;
-          }
-          if (rectY + 2*radius > this._renderBoundaries[3]) {
-            this._renderBoundaries[3] = rectY + 2*radius;
-          }
-
+          this._renderBoundaries[0] = rectX;
+        }
+        if (rectY < this._renderBoundaries[1]) {
+          this._renderBoundaries[1] = rectY;
+        }
+        if (rectX + 2 * radius > this._renderBoundaries[2]) {
+          this._renderBoundaries[2] = rectX + 2 * radius;
+        }
+        if (rectY + 2 * radius > this._renderBoundaries[3]) {
+          this._renderBoundaries[3] = rectY + 2 * radius;
+        }
       }
     },
-    _colorize: function() {
+    _colorize: function () {
       var x = this._renderBoundaries[0];
       var y = this._renderBoundaries[1];
       var width = this._renderBoundaries[2] - x;
@@ -472,11 +463,9 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
       var len = imgData.length;
       var palette = this._palette;
 
-
-      for (var i = 3; i < len; i+= 4) {
+      for (var i = 3; i < len; i += 4) {
         var alpha = imgData[i];
         var offset = alpha * 4;
-
 
         if (!offset) {
           continue;
@@ -497,20 +486,23 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
           }
         }
 
-        imgData[i-3] = palette[offset];
-        imgData[i-2] = palette[offset + 1];
-        imgData[i-1] = palette[offset + 2];
+        imgData[i - 3] = palette[offset];
+        imgData[i - 2] = palette[offset + 1];
+        imgData[i - 1] = palette[offset + 2];
         imgData[i] = useGradientOpacity ? palette[offset + 3] : finalAlpha;
-
       }
-
-      img.data = imgData;
+      Object.defineProperty(img, "data", {
+        value: imgData,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+      // img.data = imgData;
       this.ctx.putImageData(img, x, y);
 
       this._renderBoundaries = [1000, 1000, 0, 0];
-
     },
-    getValueAt: function(point) {
+    getValueAt: function (point) {
       var value;
       var shadowCtx = this.shadowCtx;
       var img = shadowCtx.getImageData(point.x, point.y, 1, 1);
@@ -518,106 +510,104 @@ var Canvas2dRenderer = (function Canvas2dRendererClosure() {
       var max = this._max;
       var min = this._min;
 
-      value = (Math.abs(max-min) * (data/255)) >> 0;
+      value = (Math.abs(max - min) * (data / 255)) >> 0;
 
       return value;
     },
-    getDataURL: function() {
+    getDataURL: function () {
       return this.canvas.toDataURL();
-    }
+    },
   };
-
 
   return Canvas2dRenderer;
 })();
 
 var Renderer = (function RendererClosure() {
-
   var rendererFn = false;
 
-  if (HeatmapConfig['defaultRenderer'] === 'canvas2d') {
+  if (HeatmapConfig["defaultRenderer"] === "canvas2d") {
     rendererFn = Canvas2dRenderer;
   }
 
   return rendererFn;
 })();
 
-
 var Util = {
-  merge: function() {
+  merge: function () {
     var merged = {};
     var argsLen = arguments.length;
     for (var i = 0; i < argsLen; i++) {
-      var obj = arguments[i]
+      var obj = arguments[i];
       for (var key in obj) {
         merged[key] = obj[key];
       }
     }
     return merged;
-  }
+  },
 };
 // Heatmap Constructor
 var Heatmap = (function HeatmapClosure() {
-
   var Coordinator = (function CoordinatorClosure() {
-
     function Coordinator() {
       this.cStore = {};
-    };
+    }
 
     Coordinator.prototype = {
-      on: function(evtName, callback, scope) {
+      on: function (evtName, callback, scope) {
         var cStore = this.cStore;
 
         if (!cStore[evtName]) {
           cStore[evtName] = [];
         }
-        cStore[evtName].push((function(data) {
-            return callback.call(scope, data);
-        }));
+        cStore[evtName].push(function (data) {
+          return callback.call(scope, data);
+        });
       },
-      emit: function(evtName, data) {
+      emit: function (evtName, data) {
         var cStore = this.cStore;
         if (cStore[evtName]) {
           var len = cStore[evtName].length;
-          for (var i=0; i<len; i++) {
+          for (var i = 0; i < len; i++) {
             var callback = cStore[evtName][i];
             callback(data);
           }
         }
-      }
+      },
     };
 
     return Coordinator;
   })();
 
-
-  var _connect = function(scope) {
+  var _connect = function (scope) {
     var renderer = scope._renderer;
     var coordinator = scope._coordinator;
     var store = scope._store;
 
-    coordinator.on('renderpartial', renderer.renderPartial, renderer);
-    coordinator.on('renderall', renderer.renderAll, renderer);
-    coordinator.on('extremachange', function(data) {
+    coordinator.on("renderpartial", renderer.renderPartial, renderer);
+    coordinator.on("renderall", renderer.renderAll, renderer);
+    coordinator.on("extremachange", function (data) {
       scope._config.onExtremaChange &&
-      scope._config.onExtremaChange({
-        min: data.min,
-        max: data.max,
-        gradient: scope._config['gradient'] || scope._config['defaultGradient']
-      });
+        scope._config.onExtremaChange({
+          min: data.min,
+          max: data.max,
+          gradient:
+            scope._config["gradient"] || scope._config["defaultGradient"],
+        });
     });
     store.setCoordinator(coordinator);
   };
 
-
   function Heatmap() {
-    var config = this._config = Util.merge(HeatmapConfig, arguments[0] || {});
+    var config = (this._config = Util.merge(HeatmapConfig, arguments[0] || {}));
     this._coordinator = new Coordinator();
-    if (config['plugin']) {
-      var pluginToLoad = config['plugin'];
+    if (config["plugin"]) {
+      var pluginToLoad = config["plugin"];
       if (!HeatmapConfig.plugins[pluginToLoad]) {
-        throw new Error('Plugin \''+ pluginToLoad + '\' not found. Maybe it was not registered.');
+        throw new Error(
+          "Plugin '" +
+            pluginToLoad +
+            "' not found. Maybe it was not registered."
+        );
       } else {
         var plugin = HeatmapConfig.plugins[pluginToLoad];
         // set plugin renderer and store
@@ -629,75 +619,70 @@ var Heatmap = (function HeatmapClosure() {
       this._store = new Store(config);
     }
     _connect(this);
-  };
+  }
 
   // @TODO:
   // add API documentation
   Heatmap.prototype = {
-    addData: function() {
+    addData: function () {
       this._store.addData.apply(this._store, arguments);
       return this;
     },
-    removeData: function() {
-      this._store.removeData && this._store.removeData.apply(this._store, arguments);
+    removeData: function () {
+      this._store.removeData &&
+        this._store.removeData.apply(this._store, arguments);
       return this;
     },
-    setData: function() {
+    setData: function () {
       this._store.setData.apply(this._store, arguments);
       return this;
     },
-    setDataMax: function() {
+    setDataMax: function () {
       this._store.setDataMax.apply(this._store, arguments);
       return this;
     },
-    setDataMin: function() {
+    setDataMin: function () {
       this._store.setDataMin.apply(this._store, arguments);
       return this;
     },
-    configure: function(config) {
+    configure: function (config) {
       this._config = Util.merge(this._config, config);
       this._renderer.updateConfig(this._config);
-      this._coordinator.emit('renderall', this._store._getInternalData());
+      this._coordinator.emit("renderall", this._store._getInternalData());
       return this;
     },
-    repaint: function() {
-      this._coordinator.emit('renderall', this._store._getInternalData());
+    repaint: function () {
+      this._coordinator.emit("renderall", this._store._getInternalData());
       return this;
     },
-    getData: function() {
+    getData: function () {
       return this._store.getData();
     },
-    getDataURL: function() {
+    getDataURL: function () {
       return this._renderer.getDataURL();
     },
-    getValueAt: function(point) {
-
+    getValueAt: function (point) {
       if (this._store.getValueAt) {
         return this._store.getValueAt(point);
-      } else  if (this._renderer.getValueAt) {
+      } else if (this._renderer.getValueAt) {
         return this._renderer.getValueAt(point);
       } else {
         return null;
       }
-    }
+    },
   };
 
   return Heatmap;
-
 })();
-
 
 // core
 var heatmapFactory = {
-  create: function(config) {
+  create: function (config) {
     return new Heatmap(config);
   },
-  register: function(pluginKey, plugin) {
+  register: function (pluginKey, plugin) {
     HeatmapConfig.plugins[pluginKey] = plugin;
-  }
+  },
 };
 
-return heatmapFactory;
-
-
-});
+export default heatmapFactory;
