@@ -1,5 +1,21 @@
 import { EllipsoidSurfaceAppearance, GeometryInstance, Material, Primitive, Rectangle, RectangleGeometry, SingleTileImageryProvider, ImageryLayer, ImageMaterialProperty, Entity } from "cesium";
-import * as h337 from './heatmap.js'; //只能使用2.0.0版本，高版本热度图有出不来的情况，并且2.0.0 npm包有问题，只能通过修改使用这个js
+import h337 from './heatmap.js'; //只能使用2.0.0版本，高版本热度图有出不来的情况，并且2.0.0 npm包有问题，只能通过修改使用这个js
+const Max = (arr) => {
+    let len = arr.length;
+    let max = -Infinity;
+    while (len--) {
+        max = arr[len] > max ? arr[len] : max;
+    }
+    return max;
+};
+const Min = (arr) => {
+    let len = arr.length;
+    let min = Infinity;
+    while (len--) {
+        min = arr[len] < min ? arr[len] : min;
+    }
+    return min;
+};
 /**
  * 热度图
  */
@@ -20,25 +36,26 @@ export class CesiumHeatmap {
             const values = [];
             for (let i in this.initOptions.points) {
                 const point = this.initOptions.points[i];
-                const x = (point.x - bounds[0]) / (bounds[2] - bounds[0]) * width; //屏幕坐标x
-                const y = (bounds[3] - point.y) / (bounds[3] - bounds[1]) * height; //屏幕坐标y
+                const x = ((point.x - bounds[0]) / (bounds[2] - bounds[0])) * width; //屏幕坐标x
+                const y = ((bounds[3] - point.y) / (bounds[3] - bounds[1])) * height; //屏幕坐标y
                 const dataPoint = {
                     x: x,
                     y: y,
-                    value: point.value
+                    value: point.value,
                 };
-                if (typeof (point.value) === "number")
+                if (typeof point.value === "number")
                     values.push(point.value);
                 datas.push(dataPoint);
             }
             //数据的最大值和最小值
-            let _min = Math.min(...values), _max = Math.max(...values);
+            let _min = values.length > 100000 ? Min(values) : Math.min(...values);
+            let _max = values.length > 100000 ? Max(values) : Math.max(...values);
             if ((_b = this.initOptions) === null || _b === void 0 ? void 0 : _b.heatmapDataOptions) {
                 const { min, max } = this.initOptions.heatmapDataOptions;
-                if (typeof (min) === "number") {
+                if (typeof min === "number") {
                     _min = min;
                 }
-                if (typeof (max) === "number") {
+                if (typeof max === "number") {
                     _max = max;
                 }
             }
@@ -46,24 +63,25 @@ export class CesiumHeatmap {
             const data = {
                 max: _max,
                 min: _min,
-                data: datas
+                data: datas,
             };
             const defaultOptions = {
-                maxOpacity: .9,
+                maxOpacity: 0.9,
                 // radius: minRadius,
-                // minimum opacity. any value > 0 will produce 
+                // minimum opacity. any value > 0 will produce
                 // no transparent gradient transition
-                minOpacity: .1,
+                minOpacity: 0.1,
                 gradient: {
                     // enter n keys between 0 and 1 here
                     // for gradient color customization
-                    '.3': 'blue',
-                    '.5': 'green',
-                    '.7': 'yellow',
-                    '.95': 'red'
+                    ".3": "blue",
+                    ".5": "green",
+                    ".7": "yellow",
+                    ".95": "red",
                 },
             };
-            const _options = this.initOptions.heatmapOptions ? Object.assign(Object.assign({}, defaultOptions), this.initOptions.heatmapOptions) : defaultOptions;
+            const _options = this.initOptions.heatmapOptions
+                ? Object.assign(Object.assign({}, defaultOptions), this.initOptions.heatmapOptions) : defaultOptions;
             //初始化半径
             if ((_c = this.heatmapOptions) === null || _c === void 0 ? void 0 : _c.radius) {
                 this.initRadius = this.heatmapOptions.radius;
@@ -78,7 +96,7 @@ export class CesiumHeatmap {
             }
             if (this.initOptions.zoomToLayer && bounds) {
                 this.viewer.camera.flyTo({
-                    destination: Rectangle.fromDegrees(...bounds)
+                    destination: Rectangle.fromDegrees(...bounds),
                 });
             }
         }
@@ -90,12 +108,12 @@ export class CesiumHeatmap {
     updateHeatMapMaxMin(dataOption) {
         const { min, max } = dataOption;
         if (this.heatmap) {
-            if (typeof (min) === "number") {
+            if (typeof min === "number") {
                 this.heatmap.setDataMin(min);
                 if (this.heatmapDataOptions)
                     this.heatmapDataOptions.min = min;
             }
-            if (typeof (max) === "number") {
+            if (typeof max === "number") {
                 this.heatmap.setDataMax(max);
                 if (this.heatmapDataOptions)
                     this.heatmapDataOptions.max = max;
@@ -174,22 +192,22 @@ export class CesiumHeatmap {
             geometryInstances: new GeometryInstance({
                 geometry: new RectangleGeometry({
                     rectangle: Rectangle.fromDegrees(...this.bounds),
-                    vertexFormat: EllipsoidSurfaceAppearance.VERTEX_FORMAT
-                })
+                    vertexFormat: EllipsoidSurfaceAppearance.VERTEX_FORMAT,
+                }),
             }),
             appearance: new EllipsoidSurfaceAppearance({
-                aboveGround: false
+                aboveGround: false,
             }),
-            show: true
+            show: true,
         }));
         if (this.provider) {
             this.provider.appearance.material = new Material({
                 fabric: {
-                    type: 'Image',
+                    type: "Image",
                     uniforms: {
                         image: url,
-                    }
-                }
+                    },
+                },
             });
         }
     }
@@ -197,13 +215,13 @@ export class CesiumHeatmap {
         const url = this.heatmap.getDataURL();
         this.provider = this.viewer.imageryLayers.addImageryProvider(new SingleTileImageryProvider({
             url: url,
-            rectangle: Rectangle.fromDegrees(...this.bounds)
+            rectangle: Rectangle.fromDegrees(...this.bounds),
         }));
     }
     getImageMaterialProperty() {
         const url = this.heatmap.getDataURL();
         const material = new ImageMaterialProperty({
-            image: url
+            image: url,
         });
         return material;
     }
@@ -212,8 +230,8 @@ export class CesiumHeatmap {
             show: true,
             rectangle: {
                 coordinates: Rectangle.fromDegrees(...this.bounds),
-                material: this.getImageMaterialProperty()
-            }
+                material: this.getImageMaterialProperty(),
+            },
         });
     }
     updateLayer() {
@@ -242,11 +260,14 @@ export class CesiumHeatmap {
             var _a;
             if (this.heatmapOptions && this.heatmap && this.heatmapDataOptions) {
                 const h = this.viewer.camera.getMagnitude();
-                const distance = ((_a = this === null || this === void 0 ? void 0 : this.initOptions) === null || _a === void 0 ? void 0 : _a.cameraHeightDistance) ? this.initOptions.cameraHeightDistance : 1000;
+                const distance = ((_a = this === null || this === void 0 ? void 0 : this.initOptions) === null || _a === void 0 ? void 0 : _a.cameraHeightDistance)
+                    ? this.initOptions.cameraHeightDistance
+                    : 1000;
                 if (Math.abs(h - this.lastCameraHeight) > distance) {
                     this.lastCameraHeight = h;
-                    if (typeof (min) === "number" && typeof (max) === "number") {
-                        const radius = parseInt((this.initRadius + (maxRadius - this.initRadius) * (h - min) / (max - min)).toFixed(0));
+                    if (typeof min === "number" && typeof max === "number") {
+                        const radius = parseInt((this.initRadius +
+                            ((maxRadius - this.initRadius) * (h - min)) / (max - min)).toFixed(0));
                         if (radius) {
                             this.updateRadius(radius);
                         }
@@ -277,15 +298,20 @@ export class CesiumHeatmap {
             });
             const xRange = lonMax - lonMin ? lonMax - lonMin : 1;
             const yRange = latMax - latMin ? latMax - latMin : 1;
-            return [lonMin - xRange / 10, latMin - yRange / 10, lonMax + xRange / 10, latMax + yRange / 10];
+            return [
+                lonMin - xRange / 10,
+                latMin - yRange / 10,
+                lonMax + xRange / 10,
+                latMax + yRange / 10,
+            ];
         }
         return [0, 0, 0, 0];
     }
     createContainer(bounds) {
-        const container = document.createElement('div');
+        const container = document.createElement("div");
         const width = 1000;
-        const height = parseInt((1000 / (bounds[2] - bounds[0]) * (bounds[3] - bounds[1])).toFixed(0));
-        container.setAttribute('style', `width:${width}px;height:${height}px;display:none;`);
+        const height = parseInt(((1000 / (bounds[2] - bounds[0])) * (bounds[3] - bounds[1])).toFixed(0));
+        container.setAttribute("style", `width:${width}px;height:${height}px;display:none;`);
         document.body.appendChild(container);
         return { container, width, height };
     }

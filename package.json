@@ -3,7 +3,7 @@
     "main": "dist/cesium-heatmap-es6.umd.js",
     "module": "dist/index.js",
     "typings": "lib/index.d.ts",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "private": false,
     "dependencies": {
         "cesium": "^1.102.0"
